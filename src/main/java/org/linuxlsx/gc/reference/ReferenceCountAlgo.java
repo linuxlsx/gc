@@ -94,11 +94,11 @@ public class ReferenceCountAlgo {
 
     }
 
-    private void incrRefCount(ReferenceCountObj obj) {
+    protected void incrRefCount(ReferenceCountObj obj) {
         obj.count++;
     }
 
-    private void defRefCount(ReferenceCountObj obj) {
+    protected void defRefCount(ReferenceCountObj obj) {
         obj.count--;
 
         //如果对象的计数变为0，则直接进行回收操作
@@ -109,14 +109,17 @@ public class ReferenceCountAlgo {
                 ReferenceCountObj countObj = (ReferenceCountObj) child;
                 defRefCount(countObj);
             }
-
-            //释放掉内存
-            heap.release(new Slot(obj.start, obj.size));
-            System.out.println(String.format("ReferenceCount GC Release Heap total(%d) used(%d) usableSlot: %s", heap.getSize(), heap.getAllocatedSize(), heap.getEmptyListStr()));
+            releaseMemory(obj);
         }
     }
 
-    private ReferenceCountObj initObj(Slot slot) {
+    protected void releaseMemory(ReferenceCountObj obj) {
+        //释放掉内存
+        heap.release(new Slot(obj.start, obj.size));
+        System.out.println(String.format("ReferenceCount GC Release Heap total(%d) used(%d) usableSlot: %s", heap.getSize(), heap.getAllocatedSize(), heap.getEmptyListStr()));
+    }
+
+    protected ReferenceCountObj initObj(Slot slot) {
         ReferenceCountObj obj = new ReferenceCountObj();
 
         obj.start = slot.start;
