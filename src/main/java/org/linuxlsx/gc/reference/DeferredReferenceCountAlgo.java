@@ -8,12 +8,14 @@ import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
- * @author rongruo.lsx
+ * 延迟引用计数法的简单实现
+ *
+ * @author linuxlsx
  * @date 2019-03-27
  */
-public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
+public class DeferredReferenceCountAlgo extends ReferenceCountAlgo {
 
-    public static final int CAPACITY = 4;
+    public static final int CAPACITY = 40;
     /**
      * Zero Count Table. 用来记录计数器变为0的对象
      * 这里通过一个有界队列来实现
@@ -39,7 +41,7 @@ public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
 
             if (slot == null) {
 
-                System.out.println(String.format("ReferenceCount GC Fail Heap total(%d) used(%d) usableSlot: %s", heap.getSize(), heap.getAllocatedSize(), heap.getEmptyListStr()));
+                System.out.println(String.format("DeferredReferenceCount GC Fail Heap total(%d) used(%d) usableSlot: %s", heap.getSize(), heap.getAllocatedSize(), heap.getEmptyListStr()));
                 throw new OutOfMemoryError("------ oh, out of memory! ------");
             }
         }
@@ -52,6 +54,34 @@ public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
     }
 
     /**
+     * 模拟和根节点建立引用关系
+     * @param obj 根对象
+     */
+    @Override
+    public void makeItToRoot(ReferenceCountObj obj) {
+        //如果对象的应用是来自根节点，那么就不要修改对象的计数器
+        root.children.add(obj);
+
+        //因为对象的计数器为0，所以将其放到ZCT中
+        if (isFull()) {
+            scanZctToReleaseMemory();
+        }
+        zct.add(obj);
+    }
+
+    @Override
+    public void deReference(ReferenceCountObj from, ReferenceCountObj to) {
+
+        //因为根节点引用的对象初始计数器为0，所以释放的时候不需要操作计数器
+        if(from == null){
+            root.children.remove(to);
+        }else {
+            from.children.remove(to);
+            defRefCount(to);
+        }
+    }
+
+    /**
      * 与原始实现不同，当计数器变成0时，将对象放到ZCT中而不是直接释放
      * @param obj
      */
@@ -61,9 +91,8 @@ public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
 
         //如果对象的计数变为0，则优先把对象放到zct中
         if (obj.count == 0) {
-
             //如果队列满了，则释放掉队列中的对象
-            if(isFull()){
+            if (isFull()) {
                 scanZctToReleaseMemory();
             }
 
@@ -71,30 +100,47 @@ public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
         }
     }
 
-    private boolean isFull(){
-        if(zct.size() == CAPACITY){
+    private boolean isFull() {
+        if (zct.size() == CAPACITY) {
             return true;
         }
         return false;
     }
 
-    private void scanZctToReleaseMemory(){
+    private void scanZctToReleaseMemory() {
+
+        //在进行释放操作之前要对根节点引用的对象做计数器加1的动作，防止对象被误回收
+        for (Obj child : root.children) {
+            ((ReferenceCountObj)child).count++;
+        }
 
         Iterator<Obj> iterator = zct.iterator();
-        while (iterator.hasNext()){
+        while (iterator.hasNext()) {
 
             ReferenceCountObj countObj = (ReferenceCountObj) iterator.next();
 
-            //对于计数器为0的对象，从ZCT中移除，并删除该对象
-            if(countObj.count == 0){
-                iterator.remove();
+            //对于计数器为0的对象，从ZCT中移除，
+            iterator.remove();
+            //并删除该对象回收内存
+            if (countObj.count == 0) {
                 delete(countObj);
+            }
+        }
+
+        //在进行释放操作之后要对根节点引用的对象做计数器减1的动作
+        //同时将计数器为0的对象也放到 ZCT中
+        for (Obj child : root.children) {
+            ReferenceCountObj obj = (ReferenceCountObj) child;
+            obj.count--;
+
+            if(obj.count == 0){
+                zct.add(obj);
             }
 
         }
     }
 
-    private void delete(ReferenceCountObj countObj){
+    private void delete(ReferenceCountObj countObj) {
 
         //释放内存
         releaseMemory(countObj);
@@ -103,7 +149,7 @@ public class DeferredReferenceCountAlgo extends ReferenceCountAlgo{
         for (Obj child : countObj.children) {
             ReferenceCountObj childCountObj = (ReferenceCountObj) child;
             childCountObj.count--;
-            if(childCountObj.count == 0){
+            if (childCountObj.count == 0) {
                 delete(countObj);
             }
         }

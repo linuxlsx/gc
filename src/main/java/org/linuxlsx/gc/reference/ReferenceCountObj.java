@@ -14,4 +14,8 @@ public class ReferenceCountObj extends Obj {
      */
     public int count;
 
+    /**
+     * 标记对象的颜色
+     */
+    public Color color;
 }

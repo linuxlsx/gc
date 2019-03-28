@@ -75,7 +75,6 @@ public class ReferenceCountAlgo {
         }else {
             from.children.remove(to);
         }
-
         defRefCount(to);
     }
 
@@ -131,8 +130,7 @@ public class ReferenceCountAlgo {
     }
 
     /**
-     * 把对象置为根节点
-     *
+     * 模拟和根节点建立引用关系
      * @param obj 根对象
      */
     public void makeItToRoot(ReferenceCountObj obj) {

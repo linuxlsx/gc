@@ -3,6 +3,7 @@ package org.linuxlsx.gc;
 import org.linuxlsx.gc.common.Heap;
 import org.linuxlsx.gc.marksweep.MarkSweepAlgo;
 import org.linuxlsx.gc.marksweep.MarkSweepObj;
+import org.linuxlsx.gc.reference.DeferredReferenceCountAlgo;
 import org.linuxlsx.gc.reference.ReferenceCountAlgo;
 import org.linuxlsx.gc.reference.ReferenceCountObj;
 
@@ -16,12 +17,13 @@ public class GcUseCaseByReferenceCountAlgo {
 
         ReferenceCountAlgo algo = new ReferenceCountAlgo(20, Heap.FIRST_FIT_STRATEGY);
 
+        algo = new DeferredReferenceCountAlgo(20, Heap.FIRST_FIT_STRATEGY);
 
         try {
             ReferenceCountObj obj1 = algo.newObj(4);
             ReferenceCountObj obj2 = algo.newObj(3);
-            algo.reference(obj1, obj2);
             algo.makeItToRoot(obj1);
+            algo.reference(obj1, obj2);
 
             ReferenceCountObj obj3 = algo.newObj(3);
             algo.makeItToRoot(obj3);
