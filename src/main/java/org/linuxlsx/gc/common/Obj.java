@@ -24,5 +24,13 @@ public class Obj {
     /**
      * 用来表示对象之间的引用关系
      */
-    public LinkedList<Obj> children = new LinkedList<Obj>();
+    public LinkedList<Obj> children = new LinkedList<>();
+
+    public Obj() {
+    }
+
+    public Obj(int size, int start) {
+        this.size = size;
+        this.start = start;
+    }
 }
